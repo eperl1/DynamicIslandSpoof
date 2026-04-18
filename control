@@ -1,0 +1,9 @@
+Package: com.yourname.dynamicislandspoof
+Name: DynamicIslandSpoof
+Depends: mobilesubstrate
+Version: 1.0.0
+Architecture: iphoneos-arm
+Description: Spoof Dynamic Island on older iPhones.
+Maintainer: YourName
+Author: YourName
+Section: Tweaks
