@@ -1,3 +1,4 @@
+#import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <dlfcn.h>
@@ -19,7 +20,6 @@ struct rebinding {
   void *replacement;
   void **replaced;
 };
-
 int rebind_symbols(struct rebinding rebindings[], size_t rebindings_nel);
 int rebind_symbols_image(void *header, intptr_t slide, struct rebinding rebindings[], size_t rebindings_nel);
 
@@ -110,7 +110,7 @@ static void perform_rebinding_with_section(struct rebindings_entry *rebindings, 
   if (isDataConst) {
     int protectionFlags = PROT_READ;
     if (protection & VM_PROT_WRITE) protectionFlags |= PROT_WRITE;
-    if (protection & VM_PROT_EXECUTE) protectionFlags |= PROT_EXEC;
+    if (protection & VM_PROT_EXECUTE) protectionFlags |= PROT_EXEC; // Fix for iOS VM_PROT_EXECUTE
     mprotect(indirect_symbol_bindings, section->size, protectionFlags);
   }
 }
@@ -173,12 +173,39 @@ int rebind_symbols(struct rebinding rebindings[], size_t rebindings_nel) {
   return retval;
 }
 
-// --- SPOOFING LOGIC ---
+// --- DYNAMIC ISLAND OVERLAY LOGIC ---
+UIWindow *dynamicIslandWindow;
+
+void createFakeDynamicIsland(void) {
+    // Wait slightly to ensure the app has loaded its screen bounds
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (dynamicIslandWindow) return; // Prevent multiple islands
+        
+        dynamicIslandWindow = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+        dynamicIslandWindow.windowLevel = UIWindowLevelStatusBar + 100;
+        dynamicIslandWindow.hidden = NO;
+        dynamicIslandWindow.backgroundColor = [UIColor clearColor];
+        
+        // Disabled so your screen touches pass through the transparent window to the app below
+        dynamicIslandWindow.userInteractionEnabled = NO; 
+        
+        CGFloat screenWidth = [UIScreen mainScreen].bounds.size.width;
+        // Standard iPhone 14 Pro island size and position
+        UIView *islandView = [[UIView alloc] initWithFrame:CGRectMake((screenWidth - 125) / 2, 11, 125, 37)];
+        islandView.backgroundColor = [UIColor blackColor];
+        islandView.layer.cornerRadius = 18.5;
+        islandView.layer.masksToBounds = YES;
+        
+        [dynamicIslandWindow addSubview:islandView];
+    });
+}
+
+// --- HARDWARE SPOOFING LOGIC ---
 CFTypeRef (*orig_MGCopyAnswer)(CFStringRef question);
 
 CFTypeRef hooked_MGCopyAnswer(CFStringRef question) {
     if (CFStringCompare(question, CFSTR("ArtworkDeviceSubType"), 0) == kCFCompareEqualTo) {
-        int subtype = 2556; 
+        int subtype = 2556; // iPhone 14 Pro subtype
         return CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &subtype);
     }
     if (CFStringCompare(question, CFSTR("hw.machine"), 0) == kCFCompareEqualTo) {
@@ -187,11 +214,16 @@ CFTypeRef hooked_MGCopyAnswer(CFStringRef question) {
     return orig_MGCopyAnswer(question);
 }
 
+// --- INJECTION CONSTRUCTOR ---
 __attribute__((constructor))
 static void initialize_dynamic_island_spoof() {
     struct rebinding rebindings[] = {
         {"MGCopyAnswer", hooked_MGCopyAnswer, (void **)&orig_MGCopyAnswer}
     };
     rebind_symbols(rebindings, 1);
-    NSLog(@"[DynamicIslandSpoofer] Successfully injected and hooked MGCopyAnswer!");
+    
+    // Call the function to draw the black overlay
+    createFakeDynamicIsland();
+    
+    NSLog(@"[DynamicIslandSpoofer] Injected successfully!");
 }
