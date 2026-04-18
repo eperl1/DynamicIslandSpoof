@@ -110,7 +110,7 @@ static void perform_rebinding_with_section(struct rebindings_entry *rebindings, 
   if (isDataConst) {
     int protectionFlags = PROT_READ;
     if (protection & VM_PROT_WRITE) protectionFlags |= PROT_WRITE;
-    if (protection & VM_PROT_EXEC) protectionFlags |= PROT_EXEC;
+    if (protection & VM_PROT_EXECUTE) protectionFlags |= PROT_EXEC;
     mprotect(indirect_symbol_bindings, section->size, protectionFlags);
   }
 }
