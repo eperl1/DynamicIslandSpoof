@@ -1,7 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <dlfcn.h>
-#import "fishhook.h"
+#import "./fishhook.h"
 
 // Define the original MGCopyAnswer function pointer
 CFTypeRef (*orig_MGCopyAnswer)(CFStringRef question);
