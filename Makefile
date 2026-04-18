@@ -4,8 +4,7 @@ INSTALL_TARGET_PROCESSES = SpringBoard
 
 TWEAK_NAME = DynamicIslandSpoof
 DynamicIslandSpoof_FILES = Tweak.m fishhook.c
-
-DynamicIslandSpoof_CFLAGS = -fobjc-arc
+DynamicIslandSpoof_CFLAGS = -fobjc-arc -I.
 
 include $(THEOS)/makefiles/common.mk
 include $(THEOS_MAKE_PATH)/tweak.mk
